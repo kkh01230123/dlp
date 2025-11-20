@@ -1,0 +1,78 @@
+# config/default.yaml
+
+# ----------------------------
+# 공통 설정
+# ----------------------------
+common:
+  seed: 42
+  device: auto            # auto / cuda / cpu
+  num_classes: 2          # background + pothole
+
+  # 경로
+  data_dir: data
+  splits_dir: data/splits
+  models_dir: models
+  outputs_dir: outputs
+
+# ----------------------------
+# 모델 설정 (model.py 기준)
+# ----------------------------
+model:
+  name: fasterrcnn_resnet50_fpn
+  backbone: resnet50_fpn
+  anchor_sizes: [32, 64, 128, 256, 512]
+  anchor_aspect_ratios: [0.5, 1.0, 2.0]
+  box_detections_per_img: 100
+  freeze_backbone_until: layer3   # layer1, layer2까지 freeze, layer3부터 학습
+
+# ----------------------------
+# 학습(Train) 설정 (train.py)
+# ----------------------------
+train:
+  batch_size: 4
+  epochs: 10
+
+  optimizer:
+    type: sgd
+    lr: 0.001
+    momentum: 0.9
+    weight_decay: 0.0005
+
+  dataloader:
+    num_workers: 4       # Windows 문제 있으면 0으로 변경
+    pin_memory: true
+
+  early_stopping:
+    enabled: true
+    patience: 3
+
+  # split 파일 (비우면 <splits_dir>/train.txt / val.txt 사용)
+  train_split: ""
+  val_split: ""
+
+# ----------------------------
+# 검증(Validation) 설정
+# ----------------------------
+val:
+  batch_size: 4
+  num_workers: 4
+
+# ----------------------------
+# 테스트(Test) / 시각화 설정 (test.py)
+# ----------------------------
+test:
+  batch_size: 1
+  num_workers: 2
+  score_thresh: 0.6       # 0.5~0.7 사이에서 조정 가능
+
+  # split 파일 (비우면 <splits_dir>/test.txt 사용)
+  test_split: ""
+
+  # 어떤 체크포인트를 사용할지
+  # 1) run_name + ckpt_name 조합 (기본)
+  run_name: "FRcnn_bs4_lr0.005_2025XXXX-XXXX"
+  ckpt_name: "best_epoch_X.pt"
+
+  # 2) checkpoint 경로를 직접 지정할 때는 아래 값 사용
+  #    값이 비어 있으면 run_name + ckpt_name 조합을 사용
+  checkpoint: ""
