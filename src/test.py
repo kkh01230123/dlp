@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 from src.dataset import PotholeDataset, collate_fn
 from src.transforms import get_valid_transform
 from src.model import get_faster_rcnn_model
+from src.evaluation import eval_precision_recall_f1, eval_ap_single_threshold
 
 from torchvision.utils import draw_bounding_boxes
 from torchvision.transforms.functional import to_pil_image
@@ -74,12 +75,11 @@ def visualize_and_save(image_tensor, outputs, save_path, score_thresh=0.5):
     img_uint8 = (image_tensor.clamp(0, 1) * 255).to(torch.uint8)
 
     boxes = outputs["boxes"]
-    labels = outputs["labels"]
+    labels = outputs.get("labels", None)
     scores = outputs["scores"]
 
     keep = scores >= score_thresh
     boxes = boxes[keep]
-    labels = labels[keep]
     scores = scores[keep]
 
     if boxes.numel() == 0:
@@ -101,7 +101,38 @@ def visualize_and_save(image_tensor, outputs, save_path, score_thresh=0.5):
 
 
 # ----------------------------
-# 메인: Test + 시각화
+# 예측/정답 수집 (평가용)
+# ----------------------------
+def collect_predictions_and_gts(model, test_loader, device, score_thresh=0.5):
+    """
+    test 전체에 대해:
+      - preds: [{'boxes': [[x1,y1,x2,y2], ...], 'scores': [..]}]
+      - gts:   [{'boxes': [[...], ...]}]
+    를 반환.
+    """
+    preds, gts = [], []
+    model.eval()
+    with torch.no_grad():
+        for images, targets in test_loader:
+            image = images[0].to(device)  # batch_size=1 가정
+            output = model([image])[0]
+
+            # 예측값
+            boxes = output['boxes']
+            scores = output['scores']
+            keep = scores >= score_thresh
+            pred_boxes = boxes[keep].cpu().numpy().tolist()
+            pred_scores = scores[keep].cpu().numpy().tolist()
+            preds.append({'boxes': pred_boxes, 'scores': pred_scores})
+
+            # 정답값
+            gt_boxes = targets[0]['boxes'].cpu().numpy().tolist()
+            gts.append({'boxes': gt_boxes})
+    return preds, gts
+
+
+# ----------------------------
+# 메인: Test + 시각화 + 평가
 # ----------------------------
 def main():
     parser = argparse.ArgumentParser()
@@ -113,7 +144,7 @@ def main():
     parser.add_argument("--outputs_dir", type=str, default="outputs")
 
     # 체크포인트 지정
-    parser.add_argument("--run_name", type=str, default="FRcnn_bs4_lr0.001_20251117-171133")
+    parser.add_argument("--run_name", type=str, default="FRcnn_bs4_lr0.001_20251122-174741")
     parser.add_argument("--ckpt_name", type=str, default="best_epoch_4.pt")
     parser.add_argument("--checkpoint", type=str, default="", help="직접 경로 지정시 우선")
 
@@ -167,6 +198,25 @@ def main():
     print("\n[Test] Inference & visualization finished.")
     print(f"Results saved in: {out_dir}")
 
+    # ===== 여기부터: 예측 수집 + 평가 호출 =====
+    preds, gts = collect_predictions_and_gts(
+        model, test_loader, device, score_thresh=args.score_thresh
+    )
+    prf = eval_precision_recall_f1(preds, gts, iou_thresh=0.5)
+    ap  = eval_ap_single_threshold(preds, gts, iou_thresh=0.5)
+
+    # 결과 저장/출력
+    eval_path = os.path.join(out_dir, "eval_summary.txt")
+    with open(eval_path, "w") as f:
+        f.write(f"ScoreThresh={args.score_thresh}\n")
+        f.write(f"TP={prf['tp']} FP={prf['fp']} FN={prf['fn']}\n")
+        f.write(f"Precision={prf['precision']:.4f} Recall={prf['recall']:.4f} F1={prf['f1']:.4f}\n")
+        f.write(f"AP@0.5={ap['ap']:.4f}\n")
+
+    print(f"[EVAL] P={prf['precision']:.4f} R={prf['recall']:.4f} F1={prf['f1']:.4f} | AP50={ap['ap']:.4f}")
+    print(f"[EVAL] Saved: {eval_path}")
+
 
 if __name__ == "__main__":
     main()
+
