@@ -79,14 +79,14 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--device", default="auto")
-    parser.add_argument("--epochs", type=int, default=10)
+    parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--batch_size", type=int, default=4)
-    parser.add_argument("--lr", type=float, default=0.005)
+    parser.add_argument("--lr", type=float, default=0.00025)
 
     parser.add_argument("--data_dir", default="data")
     parser.add_argument("--splits_dir", default="data/splits")
 
-    parser.add_argument("--num_workers", type=int, default=2)
+    parser.add_argument("--num_workers", type=int, default=4)
     parser.add_argument("--save_dir", default="models")
 
     parser.add_argument("--seed", type=int, default=42)

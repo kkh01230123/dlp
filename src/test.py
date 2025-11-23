@@ -144,8 +144,8 @@ def main():
     parser.add_argument("--outputs_dir", type=str, default="outputs")
 
     # 체크포인트 지정
-    parser.add_argument("--run_name", type=str, default="FRcnn_bs4_lr0.001_20251122-174741")
-    parser.add_argument("--ckpt_name", type=str, default="best_epoch_4.pt")
+    parser.add_argument("--run_name", type=str, default="FRcnn_bs4_lr0.00025_20251123-192443")
+    parser.add_argument("--ckpt_name", type=str, default="best_epoch_16.pt")
     parser.add_argument("--checkpoint", type=str, default="", help="직접 경로 지정시 우선")
 
     # 모델/테스트 설정
@@ -153,7 +153,7 @@ def main():
     parser.add_argument("--batch_size", type=int, default=1)
     parser.add_argument("--num_workers", type=int, default=2)
     parser.add_argument("--device", type=str, default="auto", choices=["auto", "cuda", "cpu"])
-    parser.add_argument("--score_thresh", type=float, default=0.7)
+    parser.add_argument("--score_thresh", type=float, default=0.8)
 
     # splits 직접 지정 옵션 (기본은 test.txt)
     parser.add_argument("--test_split", type=str, default="")
